@@ -1,10 +1,59 @@
 import asyncHandler from "express-async-handler";
 import Job from "#models/jobModel.js";
 
-// @desc    Get all jobs (public)
-// @route   GET /api/public/jobs
+// @desc    Get all jobs (public) with optional search & filter
+// @route   GET /api/public/jobs?search=keyword&location=loc&category=cat&time=type
 const getJobs = asyncHandler(async (req, res) => {
-  const jobs = await Job.find({}).sort({ createdAt: -1 });
+  const { search, location, category, time } = req.query;
+  const filter = {};
+
+  if (search) {
+    const regex = new RegExp(search, "i");
+    filter.$or = [
+      { jobName: regex },
+      { companyName: regex },
+      { description: regex },
+    ];
+  }
+
+  if (location) {
+    filter.location = new RegExp(`^${location}$`, "i");
+  }
+
+  if (category) {
+    filter.category = category;
+  }
+
+  if (time) {
+    filter.time = time;
+  }
+
+  const jobs = await Job.find(filter).sort({ createdAt: -1 });
+  res.json(jobs);
+});
+
+// @desc    Get all unique locations from jobs (public)
+// @route   GET /api/public/locations
+const getLocations = asyncHandler(async (_req, res) => {
+  const locations = await Job.distinct("location");
+  locations.sort((a, b) => a.localeCompare(b));
+  res.json(locations);
+});
+
+// @desc    Search jobs by keyword (returns limited results for autocomplete)
+// @route   GET /api/public/jobs/search?q=keyword
+const searchJobs = asyncHandler(async (req, res) => {
+  const { q } = req.query;
+  if (!q || q.trim().length === 0) {
+    return res.json([]);
+  }
+  const regex = new RegExp(q, "i");
+  const jobs = await Job.find({
+    $or: [{ jobName: regex }, { companyName: regex }],
+  })
+    .select("jobName companyName location logo time")
+    .sort({ createdAt: -1 })
+    .limit(8);
   res.json(jobs);
 });
 
@@ -55,10 +104,26 @@ const getCategories = asyncHandler(async (_req, res) => {
   res.json(categories);
 });
 
-// @desc    Get all companies with job counts (public)
-// @route   GET /api/public/companies
-const getCompanies = asyncHandler(async (_req, res) => {
-  const companies = await Job.aggregate([
+// @desc    Get all companies with job counts (public) with optional search
+// @route   GET /api/public/companies?search=keyword
+const getCompanies = asyncHandler(async (req, res) => {
+  const { search } = req.query;
+  const matchStage = {};
+
+  if (search) {
+    const regex = new RegExp(search, "i");
+    matchStage.$or = [
+      { companyName: regex },
+      { category: regex },
+    ];
+  }
+
+  const pipeline = [];
+  if (Object.keys(matchStage).length > 0) {
+    pipeline.push({ $match: matchStage });
+  }
+
+  pipeline.push(
     {
       $group: {
         _id: "$companyName",
@@ -82,9 +147,10 @@ const getCompanies = asyncHandler(async (_req, res) => {
         },
       },
     },
-    { $sort: { name: 1 } },
-  ]);
+    { $sort: { name: 1 } }
+  );
 
+  const companies = await Job.aggregate(pipeline);
   res.json(companies);
 });
 
@@ -96,4 +162,4 @@ const getJobsByCompany = asyncHandler(async (req, res) => {
   res.json(jobs);
 });
 
-export { getJobs, getJobById, getJobsByCategory, getCategories, getCompanies, getJobsByCompany };
+export { getJobs, getJobById, getJobsByCategory, getCategories, getCompanies, getJobsByCompany, getLocations, searchJobs };
