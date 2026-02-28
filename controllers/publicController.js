@@ -55,4 +55,45 @@ const getCategories = asyncHandler(async (_req, res) => {
   res.json(categories);
 });
 
-export { getJobs, getJobById, getJobsByCategory, getCategories };
+// @desc    Get all companies with job counts (public)
+// @route   GET /api/public/companies
+const getCompanies = asyncHandler(async (_req, res) => {
+  const companies = await Job.aggregate([
+    {
+      $group: {
+        _id: "$companyName",
+        jobCount: { $sum: 1 },
+        logo: { $first: "$logo" },
+        categories: { $addToSet: "$category" },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        name: "$_id",
+        jobCount: 1,
+        logo: 1,
+        categories: {
+          $reduce: {
+            input: "$categories",
+            initialValue: [],
+            in: { $setUnion: ["$$value", "$$this"] },
+          },
+        },
+      },
+    },
+    { $sort: { name: 1 } },
+  ]);
+
+  res.json(companies);
+});
+
+// @desc    Get jobs by company name (public)
+// @route   GET /api/public/companies/:name/jobs
+const getJobsByCompany = asyncHandler(async (req, res) => {
+  const { name } = req.params;
+  const jobs = await Job.find({ companyName: name }).sort({ createdAt: -1 });
+  res.json(jobs);
+});
+
+export { getJobs, getJobById, getJobsByCategory, getCategories, getCompanies, getJobsByCompany };

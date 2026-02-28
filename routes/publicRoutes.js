@@ -4,6 +4,8 @@ import {
   getJobById,
   getJobsByCategory,
   getCategories,
+  getCompanies,
+  getJobsByCompany,
 } from "#controllers/publicController.js";
 
 const router = Router();
@@ -13,5 +15,7 @@ router.get("/jobs", getJobs);
 router.get("/jobs/category/:category", getJobsByCategory);
 router.get("/jobs/:id", getJobById);
 router.get("/categories", getCategories);
+router.get("/companies", getCompanies);
+router.get("/companies/:name/jobs", getJobsByCompany);
 
 export default router;
