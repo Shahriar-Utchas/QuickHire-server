@@ -23,7 +23,7 @@ Backend REST API for the QuickHire job portal, built with Express.js and MongoDB
 1. **Clone the repository**
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/Shahriar-Utchas/QuickHire-server.git
 cd quickhire-server
 ```
 
