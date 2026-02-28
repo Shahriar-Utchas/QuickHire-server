@@ -15,6 +15,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, "Please add a password"],
     },
+    resumeLink: {
+      type: String,
+      default: "",
+      trim: true,
+    },
   },
   {
     timestamps: true,
